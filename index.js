@@ -23,8 +23,7 @@ async function fetchImageAsBase64(url) {
         const response = await fetch(url)
         if (!response.ok) throw new Error(`Failed to fetch: ${response.statusText}`)
 
-        console.log("url:", url)
-        console.warn(response.headers.get("x-staticmap-api-warning"))
+        if (response.headers.get("x-staticmap-api-warning")) console.warn(response.headers.get("x-staticmap-api-warning"))
 
         const arrayBuffer = await response.arrayBuffer()
         const buffer = Buffer.from(arrayBuffer)
