@@ -1,0 +1,21 @@
+{
+  "name": "express-image-template-tool",
+  "version": "1.0.0",
+  "description": "",
+  "license": "ISC",
+  "author": "toni@kuschan.com",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "dev": "export NODE_TLS_REJECT_UNAUTHORIZED=0 && nodemon index.js",
+    "start": "node index.js",
+    "bundev": "export NODE_TLS_REJECT_UNAUTHORIZED=0 && bun --hot run index.js",
+    "bunstart": "bun run index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "express": "^5.2.1",
+    "handlebars": "^4.7.8",
+    "node-html-to-image": "^5.0.0"
+  }
+}
