@@ -9,9 +9,12 @@ const appUrl = `http://localhost:${port}`
 
 app.use(express.static('public'))
 
-// 1. Read the Handlebars template from the file system
-const templateHtml = fs.readFileSync('./template.hbs', 'utf8')
-const compiledTemplate = Handlebars.compile(templateHtml)
+// Read the default Handlebars template from the file system
+async function readDefaultTemplate(templateName = "default") {
+    const templateHtml = fs.readFileSync(`./templates/${templateName}.hbs`, 'utf8')
+    const compiledTemplate = Handlebars.compile(templateHtml)
+    return { templateHtml, compiledTemplate }
+}
 
 // 2. Helper Function: Fetch an image URL and convert it to a Base64 Data URI
 async function fetchImageAsBase64(url) {
@@ -33,6 +36,7 @@ async function fetchImageAsBase64(url) {
 
 // 3. Helper Function: Extract query parameters with default fallbacks
 const getRideParams = (query) => ({
+    templateName: query.templateName || 'default',
     logoUrl: query.logoUrl || `${appUrl}/logo.png`,
     backgroundImageUrl: query.backgroundImageUrl || `${appUrl}/background.jpg`,
     driverName: query.driverName || 'Your Driver',
@@ -49,10 +53,11 @@ const getRideParams = (query) => ({
 // --- ENDPOINTS ---
 
 // Endpoint A: Render the HTML directly in the browser
-app.get('/render', (req, res) => {
+app.get('/render', async (req, res) => {
     const params = getRideParams(req.query)
 
     // Pass the raw parameters directly into the compiled Handlebars template
+    const { compiledTemplate } = await readDefaultTemplate(params.templateName)
     const html = compiledTemplate(params)
     res.send(html)
 })
@@ -80,6 +85,7 @@ app.get('/image', async (req, res) => {
         }
 
         // Generate the image buffer
+        const { templateHtml } = await readDefaultTemplate(params.templateName)
         const imageBuffer = await nodeHtmlToImage({
             html: templateHtml,
             content: renderParams,

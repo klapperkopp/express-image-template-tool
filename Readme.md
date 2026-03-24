@@ -24,6 +24,7 @@ Both endpoints accept the exact same URL query parameters to dynamically populat
 
 | Parameter | Type | Description | Default Value |
 | :--- | :--- | :--- | :--- |
+| `temapltename` | `string` | The template file name in <project root>/templates/templateName.hbs (without .hbs). | `default`|
 | `backgroundImageUrl` | `string` | The background image URL. | *(Placeholder Image)* |
 | `logoUrl` | `string` | The logo or image URL. | *(Placeholder Image)* |
 | `driverName` | `string` | First and/or last name of the driver. | `Your Driver` |
