@@ -23,6 +23,9 @@ async function fetchImageAsBase64(url) {
         const response = await fetch(url)
         if (!response.ok) throw new Error(`Failed to fetch: ${response.statusText}`)
 
+        console.log("url:", url)
+        console.warn(response.headers.get("x-staticmap-api-warning"))
+
         const arrayBuffer = await response.arrayBuffer()
         const buffer = Buffer.from(arrayBuffer)
         const mimeType = response.headers.get('content-type') || 'image/png'
@@ -49,6 +52,46 @@ const getRideParams = (query) => ({
     width: query.width || 1920,
     height: query.height || 1080
 })
+
+// Helper Function: Get route polyline from Directions API
+async function getRoutePolyline(startLocation, endLocation, apiKey) {
+    try {
+        const baseUrl = 'https://maps.googleapis.com/maps/api/directions/json'
+        const params = new URLSearchParams({
+            origin: startLocation,
+            destination: endLocation,
+            mode: 'driving',
+            key: apiKey
+        })
+
+        const response = await fetch(`${baseUrl}?${params.toString()}`)
+        if (!response.ok) throw new Error(`Directions API error: ${response.statusText}`)
+
+        const data = await response.json()
+        if (data.status !== 'OK') throw new Error(`Directions API: ${data.status}`)
+        const encodedPolyline = data.routes[0].overview_polyline.points
+        return encodedPolyline
+    } catch (error) {
+        console.error('Error fetching route polyline:', error.message)
+        throw error
+    }
+}
+
+// Helper Function: Generate Google Maps Static API URL with encoded polyline
+async function generateMapsStaticUrlWithRoute(startLocation, endLocation, apiKey, width = 600, height = 400) {
+    const encodedPolyline = await getRoutePolyline(startLocation, endLocation, apiKey)
+    const baseUrl = 'https://maps.googleapis.com/maps/api/staticmap'
+    const params = new URLSearchParams({
+        size: `${width}x${height}`,
+        path: `color:0xff0000ff|weight:3|enc:${encodedPolyline}`,
+        style: 'feature:road|element:geometry|color:0xcccccc',
+        scale: '1',
+        key: apiKey
+    })
+    params.append('markers', `color:green|label:A|${startLocation}`)
+    params.append('markers', `color:red|label:B|${endLocation}`)
+    return `${baseUrl}?${params.toString()}`
+}
 
 // --- ENDPOINTS ---
 
@@ -104,6 +147,52 @@ app.get('/image', async (req, res) => {
     } catch (error) {
         console.error('Error generating image:', error)
         res.status(500).send('An error occurred while generating the image.')
+    }
+})
+
+// Endpoint C: Render Map Route
+app.get('/renderMap', async (req, res) => {
+    try {
+        const { startLocation, endLocation, apiKey, width = 600, height = 400, returnType = 'html' } = req.query
+
+        const usedApiKey = apiKey || process.env.GOOGLE_MAPS_API_KEY
+
+        if (!startLocation || !endLocation || !usedApiKey) {
+            return res.status(400).send('Missing required parameters: startLocation, endLocation, apiKey')
+        }
+
+        const mapsUrl = await generateMapsStaticUrlWithRoute(startLocation, endLocation, usedApiKey, width, height)
+        const mapImageBase64 = await fetchImageAsBase64(mapsUrl)
+
+        if (returnType === 'image') {
+            // Return directly as image
+            const imageBuffer = Buffer.from(mapImageBase64.split(',')[1], 'base64')
+            res.set('Content-Type', 'image/png')
+            res.send(imageBuffer)
+        } else {
+            // Return as HTML (default)
+            const html = `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Route Map</title>
+                    <style>
+                        body { margin: 0; padding: 20px; font-family: Arial, sans-serif; }
+                        img { border: 1px solid #ccc; border-radius: 4px; }
+                    </style>
+                </head>
+                <body>
+                    <h1>Route Map</h1>
+                    <img src="${mapImageBase64}" alt="Route Map" width="${width}" height="${height}">
+                </body>
+                </html>
+            `
+            res.send(html)
+        }
+
+    } catch (error) {
+        console.error('Error rendering map:', error)
+        res.status(500).send('An error occurred while rendering the map.')
     }
 })
 
